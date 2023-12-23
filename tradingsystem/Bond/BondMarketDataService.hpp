@@ -13,7 +13,13 @@
 #include "../marketdataservice.hpp"
 #include "../utils.hpp"
 
-
+/**
+* Market data service class specialized for bonds;
+* stores a vector of listeners and a map of strings -> order books
+* 
+* Gets data from `marketdata.txt` from a connector and communicates it
+* to Algo Execution listeners
+*/
 class BondMarketDataService : public MarketDataService<Bond> {
 private:
   std::vector<ServiceListener<OrderBook<Bond>>*> listeners_;
@@ -45,6 +51,7 @@ public:
 
 /**
 * Market data connector class specialized for bonds;
+* Reads from `marketdata.txt`, creates OrderBook object and sends it to the service
 * Subscribe-only connector
 */
 class BondMarketDataConnector : public Connector<OrderBook<Bond>> {
@@ -82,7 +89,7 @@ void BondMarketDataService::OnMessage(OrderBook<Bond>& data) {
   // communicate book to listeners
   cout << "Communicating order book to algo execution listeners..." << endl;
   for (auto l : listeners_) {
-    l->ProcessAdd(data);
+    l->ProcessAdd(data);  // algo execution aggresses the top of the book
   }
 }
 
@@ -94,15 +101,14 @@ const vector<ServiceListener<OrderBook<Bond>>*>& BondMarketDataService::GetListe
   return listeners_;
 }
 
-// Get the best bid/offer order
 const BidOffer& BondMarketDataService::GetBestBidOffer(const string& productId) {
   return books_[productId].GetBestBidOffer();
 }
 
-// Aggregate the order book
 const OrderBook<Bond>& BondMarketDataService::AggregateDepth(const string& productId) {
-  
   // aggregate different orders with same price
+
+  // get orders in the requested book
   OrderBook<Bond> book = books_[productId];
   std::vector<Order> bid_stack = book.GetBidStack(), offer_stack = book.GetOfferStack();
 
@@ -115,14 +121,15 @@ const OrderBook<Bond>& BondMarketDataService::AggregateDepth(const string& produ
   // BIDS
   for (int i = 0; i < n_bids; ++i) {
     curr_order = bid_stack[i];
-    price = curr_order.GetPrice();
+    price = curr_order.GetPrice();  // wanna find all orders with this price
 
     if (bid_map.find(price) != bid_map.end())
+      // found another order with same price => aggregate
       bid_map[price] += curr_order.GetQuantity();
 
-    else bid_map[price] = curr_order.GetQuantity();;
+    else bid_map[price] = curr_order.GetQuantity();  // add to map if first
   }
-  // OFFERS
+  // OFFERS - same exact logic
   for (int i = 0; i < n_offers; ++i) {
     curr_order = offer_stack[i];
     price = curr_order.GetPrice();
@@ -133,7 +140,7 @@ const OrderBook<Bond>& BondMarketDataService::AggregateDepth(const string& produ
     else offer_map[price] = curr_order.GetQuantity();;
   }
 
-  // create the merged stacks
+  // create the merged stacks of Order objects to replace non-aggregated
   vector<Order> new_bids, new_offers;
   for (auto const& [price, quantity] : bid_map) {
     new_bids.push_back(Order(price, quantity, BID));
@@ -142,6 +149,7 @@ const OrderBook<Bond>& BondMarketDataService::AggregateDepth(const string& produ
     new_offers.push_back(Order(price, quantity, OFFER));
   }
 
+  // update the book for the product
   Bond bond = MakeBond(productId);
   OrderBook<Bond> new_book(bond, new_bids, new_offers);
   books_[productId] = new_book;
@@ -157,11 +165,11 @@ BondMarketDataConnector::BondMarketDataConnector(BondMarketDataService* _service
 
 void BondMarketDataConnector::Subscribe(const char* filename, const bool& header) {
   std::string line;
-  std::vector<std::string> row;
-  Bond bond;
+  std::vector<std::string> row;  // to store output of string splitting
+  Bond bond;  // bond object for which the order book will be created
   double order_price;
   long order_size;
-  PricingSide side;
+  PricingSide side;  // bid or offer
   std::vector<Order> bid_stack, offer_stack;
 
   long orders_per_bond = 10L;  // HARDCODED, instructions say 5 bids, 5 offers
@@ -201,7 +209,7 @@ void BondMarketDataConnector::Subscribe(const char* filename, const bool& header
       if (counter % orders_per_bond == 0) {
         // create a bond object from the id:
         bond = MakeBond(row[0]);
-        std::cout << std::endl << PrintTimeStamp() << std::endl << "Bond: " << bond << std::endl;
+        std::cout << std::endl << PrintTimeStamp() << " Bond: " << bond << std::endl;
 
         OrderBook<Bond> book_obj(bond, bid_stack, offer_stack);
         // communicate book to service

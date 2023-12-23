@@ -66,6 +66,9 @@ std::unordered_map<std::string, std::vector<std::string>> BucketMap() {
   return map;
 }
 
+// ************************************************************************************************
+// Functions to convert price to and from fractional (256th)
+// ************************************************************************************************
 double StringToPrice(const std::string& s_price) {
 
   std::vector<std::string> tokens;
@@ -117,11 +120,12 @@ Order find_best_order(const vector<Order>& order_stack, const PricingSide& side)
     comparator = [](double a, double b) {return (a < b); };
   }
 
-  Order best_order = order_stack[0];
+  Order best_order = order_stack[0];  // current best order
   int n_orders = order_stack.size();
 
   for (int i = 1; i < n_orders; ++i) {
     if (comparator(order_stack[i].GetPrice(), best_order.GetPrice()))
+      // if price is better, update the current best order
       best_order = order_stack[i];
   }
 

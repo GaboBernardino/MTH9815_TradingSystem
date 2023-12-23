@@ -23,22 +23,22 @@ int main() {
 
   std::cout << PrintTimeStamp() << " Creating services" << std::endl;
 
-  BondPricingService price_service;
-  BondAlgoStreamingService algo_stream_service;
-  BondStreamingService stream_service;
-  BondGUIService gui_service(300);
+  BondPricingService price_service;  // service receiving Price objects from `prices.txt`
+  BondAlgoStreamingService algo_stream_service;  // service receiving Price objects from `price_service`
+  BondStreamingService stream_service;  // service receiving PriceStreams from `algo_stream_service`
+  BondGUIService gui_service(300);  // service publishing Price information from `price_Service`
   HistoricalDataService<PriceStream<Bond>> stream_historical_service;
 
-  BondTradeBookingService trade_service;
-  BondPositionService pos_service;
-  BondRiskService risk_service;
+  BondTradeBookingService trade_service;  // service receiving Trade objects from `trades.txt`
+  BondPositionService pos_service;  // service receiving Position objects from `trade_service`
+  BondRiskService risk_service;  // service receiving PV01 objects from `pos_service`
   BondExecutionService execution_service;
   HistoricalDataService<ExecutionOrder<Bond>> execution_history_service;
   HistoricalDataService<PV01<Bond>> risk_history_service;
   HistoricalDataService<Position<Bond>> position_history_service;
 
-  BondMarketDataService mkt_service;
-  BondAlgoExecutionService algo_service;
+  BondMarketDataService mkt_service;  // service receiving OrderBook objects from `marketdata.txt`
+  BondAlgoExecutionService algo_service; // service receiving OrderBooks from `mkt_service`
 
   BondInquiryService inquiry_service;
   HistoricalDataService<Inquiry<Bond>> inquiry_historical_service;
@@ -47,26 +47,26 @@ int main() {
 
   std::cout << PrintTimeStamp() << " Linking services" << std::endl;
 
-  BondGUIListener gui_listener(&gui_service);
+  BondGUIListener gui_listener(&gui_service);  // listens to Price<Bond>
   price_service.AddListener(&gui_listener);
 
-  BondStreamingListener stream_listener(&stream_service);
+  BondStreamingListener stream_listener(&stream_service);  // listens to AlgoStream<Bond>
   algo_stream_service.AddListener(&stream_listener);
-  BondAlgoStreamingListener algo_stream_listener(&algo_stream_service);
+  BondAlgoStreamingListener algo_stream_listener(&algo_stream_service);  // listens to Price<Bond>
   price_service.AddListener(&algo_stream_listener);
 
-  HistoricalDataListener<PriceStream<Bond>> stream_hist_listener(&stream_historical_service);
+  HistoricalDataListener<PriceStream<Bond>> stream_hist_listener(&stream_historical_service);  // listens to PriceStream<Bond>
   stream_service.AddListener(&stream_hist_listener);
 
-  BondRiskListener risk_listener(&risk_service);
+  BondRiskListener risk_listener(&risk_service);  // listens to Position<Bond>
   pos_service.AddListener(&risk_listener);
-  BondPositionListener pos_listener(&pos_service);
+  BondPositionListener pos_listener(&pos_service);  // listens to Trade<Bond>
   trade_service.AddListener(&pos_listener);
   BondTradeBookingListener trade_listener(&trade_service);
   execution_service.AddListener(&trade_listener);
-  BondExecutionListener execution_listener(&execution_service);
+  BondExecutionListener execution_listener(&execution_service);  // listens to AlgoExecution<Bond>
   algo_service.AddListener(&execution_listener);
-  BondAlgoExecutionListener algo_listener(&algo_service);
+  BondAlgoExecutionListener algo_listener(&algo_service);  // listens to OrderBook<Bond>
   mkt_service.AddListener(&algo_listener);
 
   HistoricalDataListener<ExecutionOrder<Bond>> exec_hist_listener(&execution_history_service);
@@ -90,6 +90,7 @@ int main() {
   BondHistoricalStreamingConnector stream_history_conn;
   stream_historical_service.SetConnector(&stream_history_conn);
   
+  // connector publishes when it gets Price<Bond> objects from `price_service`
   BondGUIConnector gui_connector(&price_service, "Data/gui.txt");
   gui_service.SetConnector(&gui_connector);
 

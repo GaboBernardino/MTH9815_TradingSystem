@@ -16,10 +16,11 @@
 
 
 /**
- * Bond Execution Service
- * Each execution should result in a trade into the BondTradeBookingService
- * via ServiceListener on BondExectionService
- * Keyed on product identifier.
+ * Execution Service class specialized for bonds;
+ * stores a vector of listeners and a map of strings -> execution orders
+ * 
+ * Gets data via a listener on BondAlgoExecutionService and communicates it
+ * to TradeBooking listeners to book a trade
  */
 class BondExecutionService : public ExecutionService<Bond> {
 private:
@@ -50,14 +51,13 @@ public:
 
 /**
 * Execution listener specialized for bonds
-* Aggresses the top of the book, alternating between bid and offer
-* and only aggressing when the spread is at its tightest
+* gets execution order from algo and places it on BondTradeBookingService
 */
 class BondExecutionListener : public ServiceListener<AlgoExecution<Bond>> {
 private:
   BondExecutionService* bondExecService_;
 
-  // keep count of market for next order
+  // keep count of market to alternate between them
   std::array<Market, 3> markets_;
   int counter_;
 
@@ -105,7 +105,7 @@ void BondExecutionService::ExecuteOrder(ExecutionOrder<Bond>& order, Market mark
   std::string id = order.GetProduct().GetProductId();
   orders_[id] = order;
 
-  // communicate order to listeners
+  // communicate order to trade listeners
   std::cout << "Communicating order " << id << " to TradeBooking Listeners..." << endl;
   for (auto l : listeners_) {
     l->ProcessAdd(order);

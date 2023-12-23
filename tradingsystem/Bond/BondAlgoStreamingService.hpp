@@ -12,6 +12,9 @@
 #include "../streamingservice.hpp"
 #include "../pricingservice.hpp"
 
+/**
+* AlgoStresm should have a reference to an PriceStream object
+*/
 template <typename T>
 class AlgoStream {
 
@@ -39,12 +42,12 @@ const PriceStream<T>& AlgoStream<T>::GetPriceStream() const {
 
 
 /**
- * Algo Streaming Service which registers a ServiceListener
- * on the BondPricingService and send the bid/offer prices to the BondStreamingService
- * via a ServiceListener and the PublishPrice() method
- * Keyed on product identifier.
- * Type T is the product type.
- */
+* Algo Streaming Service class specialized fro bonds;
+* stores a vector of listeners and a map of strings -> algo stream objects
+*
+* Gets data via a listener on the BondPricingService and communicates it
+* to Streaming Listeners
+*/
 template<typename T>
 class AlgoStreamingService : public Service<std::string, AlgoStream<T>> {
 
@@ -58,7 +61,7 @@ private:
   std::vector<ServiceListener<AlgoStream<Bond>>*> listeners_;
   std::unordered_map<std::string, AlgoStream<Bond>> algo_streams_;
 
-  // keep counter to decide size of orders
+  // keep counter to alternate sizes of orders
   long counter_;
 
 public:
@@ -84,7 +87,8 @@ public:
 
 /**
 * Algo streaming listener specialized for bonds
-* Receives prices from a pricing service
+* Receives prices from a pricing service and sends them
+* to a Streaming Service
 */
 class BondAlgoStreamingListener : public ServiceListener<Price<Bond>> {
 private:

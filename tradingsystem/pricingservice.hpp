@@ -35,9 +35,6 @@ public:
   // Get the bid/offer spread around the mid
   double GetBidOfferSpread() const;
 
-  // Turn the attribute prices into strings for output
-  void ToString() const;
-
 private:
   T product;
   double mid;
@@ -87,16 +84,6 @@ template<typename T>
 double Price<T>::GetBidOfferSpread() const
 {
   return bidOfferSpread;
-}
-
-template<typename T>
-void Price<T>::ToString() const {
-  // std::string prod = product.GetProductId();
-  // std::string mid_price_str = PriceToString(mid), spread_str = PriceToString(bidOfferSpread);
-
-  std::cout << "Price<T>::ToString() HAS NOT YET BEEN IMPLEMENTED - change the return type when u do" << std::endl;
-
-  // return make_tuple(prod, mid_price_str, spread_str);
 }
 
 #endif

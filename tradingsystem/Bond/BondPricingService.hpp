@@ -19,11 +19,14 @@
 /**
 * Pricing service class specialized for bonds;
 * stores a vector of listeners and a map of strings -> price info
+* 
+* Gets data from `prices.txt` from a connector and communicates it
+* to GUI and AlgoStream listeners
 */
 class BondPricingService : public PricingService<Bond> {
 private:
   std::vector<ServiceListener<Price<Bond>>*> listeners_;
-  std::unordered_map<std::string, Price<Bond>> prices_;
+  std::unordered_map<std::string, Price<Bond>> prices_;  // keyed on product id
 
 public:
   // ctor
@@ -45,6 +48,7 @@ public:
 
 /**
 * Pricing connector class specialized for bonds;
+* Reads from `prices.txt`, creates a Price object and sends it to the service
 * Subscribe-only connector
 */
 class BondPricingConnector : public PricingConnector<Bond> {
@@ -78,8 +82,8 @@ void BondPricingService::OnMessage(Price<Bond>& data) {
   std::string id = data.GetProduct().GetProductId();
   prices_[id] = data;
 
-  // communicate new data to listeners
-  std::cout << "Price communicated to GUI and AlgoStream Listeners..." << std::endl;
+  // communicate new price to listeners
+  std::cout << "Communicating price to GUI and AlgoStream Listeners..." << std::endl;
   for (auto l : listeners_) {
     l->ProcessAdd(data);
   }
@@ -101,8 +105,8 @@ BondPricingConnector::BondPricingConnector(BondPricingService* _service) :
 
 void BondPricingConnector::Subscribe(const char* filename, const bool& header) {
   std::string line;
-  std::vector<std::string> row;
-  Bond bond;
+  std::vector<std::string> row;  // to store output of string splitting
+  Bond bond;  // bond object whose price will be created
   double bid, ask;
 
   try {
@@ -121,7 +125,7 @@ void BondPricingConnector::Subscribe(const char* filename, const bool& header) {
       // get price information
       bid = StringToPrice(row[1]);
       std::cout << std::endl << PrintTimeStamp();
-      std::cout << "Bid price = " << bid << "; ";
+      std::cout << " Bid price = " << bid << "; ";
       ask = StringToPrice(row[2]);
       std::cout << "Ask price = " << ask << std::endl;
       Price<Bond> price_obj(bond, 0.5 * (bid + ask), ask - bid);

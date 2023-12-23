@@ -68,7 +68,7 @@ class TradeBookingService : public Service<string,Trade <T> >
 public:
 
   // Book the trade
-  virtual void BookTrade(Trade<T> &trade) = 0;
+  virtual void AddTrade(Trade<T> &trade) = 0;
 
 };
 

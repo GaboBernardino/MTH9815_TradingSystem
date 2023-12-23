@@ -15,6 +15,7 @@
 
 /**
 * GUI connector class specialized for bonds;
+* Publishes updates from PricingService on `gui.txt`
 * Publish-only connector
 */
 class BondGUIConnector : Connector<Price<Bond>> {
@@ -34,11 +35,13 @@ public:
 };
 
 /**
- * GUI Service that listens to streaming prices
- * It should register a ServiceListener on the BondPricingService
- * which should notify back to the GUIService at that throttle interval 
- * Keyed on product identifier.
- * Type T is the product type.
+ * GUI service class specialized for bonds;
+ * stores a vector of listeners and a map of strings -> price info
+ * also stores a pointer to a connector which it uses to publish data
+ * and a throttle interval managing the frequency of gui updates
+ * 
+ * Gets streaming prices via a listener on BondPricingService
+ * and prints it to a txt file
  */
 template <typename T>
 class GUIService : public Service<std::string, Price<T>> {
@@ -83,8 +86,9 @@ public:
 
 
 /**
-* GUI Listener class that listens to prices
-* and communicates them to a gui services which then
+* GUI Listener class spaecialized for bonds;
+* listens to prices
+* and communicates them to a gui service which then
 * sends them to a connector to publish them
 */
 class BondGUIListener : public ServiceListener<Price<Bond>> {
@@ -140,6 +144,7 @@ const vector<ServiceListener<Price<Bond>>*>& BondGUIService::GetListeners() cons
 }
 
 void BondGUIService::AddPrice(Price<Bond>& price) {
+  // add data to the stored prices
   std::string id = price.GetProduct().GetProductId();
   prices_[id] = price;
 
@@ -161,9 +166,9 @@ void BondGUIConnector::Subscribe(const char* filename, const bool& header) {
 }
 
 void BondGUIConnector::Publish(Price<Bond>& data) {
-  // get data about the price
+  // product whose price is being published
   std::string id = data.GetProduct().GetProductId();
-
+  // get data about the price
   double mid = data.GetMid(), spread = data.GetBidOfferSpread();
   std::string bid_price = PriceToString(mid - 0.5 * spread);
   std::string offer_price = PriceToString(mid + 0.5 * spread);
@@ -194,9 +199,9 @@ BondGUIListener::BondGUIListener(BondGUIService* _service) :
 }
 
 void BondGUIListener::ProcessAdd(Price<Bond>& data) {
-
+  // logic for maximum number of prints and their frequency
   if (counter_ < 100 && std::chrono::system_clock::now() - start_ >= throttle_) {
-    guiService_->AddPrice(data);
+    guiService_->AddPrice(data);  // store price and publish it
     // restart throttle and counter
     counter_++;
     start_ = std::chrono::system_clock::now();

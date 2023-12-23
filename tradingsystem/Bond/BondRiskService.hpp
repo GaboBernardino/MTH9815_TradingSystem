@@ -14,6 +14,15 @@
 #include "../products.hpp"
 #include "../utils.hpp"
 
+
+/**
+* Risk service class specialized for bonds;
+* stores a vector of listeners and a map of strings -> risk info
+* and a map of strings (sector names) -> sector risk info
+* 
+* Gets data from listener on BondPositionService and communicates it
+* to Historical Data Listeners
+*/
 class BondRiskService : public RiskService<Bond> {
 private:
   std::vector<ServiceListener<PV01<Bond>>*> listeners_;
@@ -49,6 +58,7 @@ public:
 
 /**
 * Risk listener specialized for bonds
+* Sends positon information from Risk service to Historical Data
 */
 class BondRiskListener : public ServiceListener<Position<Bond>> {
 private:
@@ -73,8 +83,9 @@ public:
 // BondRiskService implementations
 // ************************************************************************************************
 BondRiskService::BondRiskService() {
+  // initialize the PV01 map of individual bonds
   std::unordered_map <std::string, double> pv_base_map = PV_Map();  // map with the hardcoded PV01 values for each ticker
-  pv_ = std::unordered_map<std::string, PV01<Bond>>();
+  pv_ = std::unordered_map<std::string, PV01<Bond>>();  // actual member
   PV01<Bond> pv_obj;
 
   for (auto [id, pv_value] : pv_base_map) {
@@ -82,6 +93,7 @@ BondRiskService::BondRiskService() {
     pv_[id] = pv_obj;
   }
 
+  // now initialize PV01 map for bucketed bonds
   std::unordered_map<std::string, std::vector<std::string>> pv_buckets_base = BucketMap();  // sector name -> cusips
   pv_buckets_ = std::unordered_map<std::string, PV01<BucketedSector<Bond>>>();  // actual member
   BucketedSector<Bond> bucket_obj;
@@ -93,7 +105,8 @@ BondRiskService::BondRiskService() {
       bonds.push_back(MakeBond(ticker));  // create the actual bond, not just the ticker
     }
     bucket_obj = BucketedSector<Bond>(bonds, sector);
-    pv_of_bucket = PV01<BucketedSector<Bond>>(bucket_obj, 0., 0);  // initialize with everything 0
+    // initialize with everything 0, then we will call `UpdateBucketedRisk`
+    pv_of_bucket = PV01<BucketedSector<Bond>>(bucket_obj, 0., 0);
     pv_buckets_[sector] = pv_of_bucket;
   }
 }
@@ -116,10 +129,10 @@ const vector<ServiceListener<PV01<Bond>>*>& BondRiskService::GetListeners() cons
 
 void BondRiskService::AddPosition(Position<Bond>& position) {
 
-  // create (current) PV object
+  // get (current) PV object to update the exposure and send to listeners
   std::string id = position.GetProduct().GetProductId();
   PV01<Bond>& pv_obj = pv_[id];
-  // modify PV object to communicate to listeners
+  // modify quantity in PV object to communicate to listeners
   long long quantity = pv_obj.GetQuantity() + position.GetAggregatePosition();
   pv_obj.SetQuantity(quantity);
 
@@ -141,8 +154,10 @@ const PV01< BucketedSector<Bond> >& BondRiskService::GetBucketedRisk(std::string
 }
 
 void BondRiskService::UpdateBucketedRisk(std::string& sector) {
-  // get bucketed sector
+  
+  // get bucketed sector object
   BucketedSector<Bond> bucket = pv_buckets_[sector].GetProduct();
+  
   // loop thru bonds in bucketed sector and compute weighted PV
   vector<Bond> products = bucket.GetProducts();
   long long qnt = 0LL;  // needed to divide and get weighted avg

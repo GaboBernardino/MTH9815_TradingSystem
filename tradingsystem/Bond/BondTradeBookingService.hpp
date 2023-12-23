@@ -18,8 +18,11 @@
 #include "BondExecutionService.hpp"
 
 /**
- * Trade Booking Service to book trades to a particular book.
- * Specialized for Bonds
+ * Trade Booking Service to book trades to a particular book specialized for Bonds
+ * stores a vector of listeners and a map of strings -> trades
+ * 
+ * Gets data from `trades.txt` via a connector and communicates it
+ * to Position listeners
  */
 class BondTradeBookingService : public TradeBookingService<Bond> {
 private:
@@ -44,7 +47,7 @@ public:
   virtual const vector<ServiceListener<Trade<Bond>>*>& GetListeners() const override;
 
   // Book the trade
-  virtual void BookTrade(Trade<Bond>& trade) override;
+  virtual void AddTrade(Trade<Bond>& trade) override;
 };
 
 /**
@@ -57,7 +60,7 @@ private:
 
   // keep count of book to place the trade on
   std::array<std::string, 3> books_;
-  int counter_;
+  long counter_;
 
 
 public:
@@ -78,6 +81,7 @@ public:
 
 /**
 * Trade booking connector class specialized for bonds;
+* Reads from `trades.txt`, creates Trade objects and sends them to the service
 * Subscribe-only connector
 */
 class BondTradeBookingConnector : public Connector<Trade<Bond>> {
@@ -108,7 +112,7 @@ Trade<Bond>& BondTradeBookingService::GetData(std::string key) {
 
 void BondTradeBookingService::OnMessage(Trade<Bond>& data) {
   // book the trade
-  BookTrade(data);
+  AddTrade(data);
 }
 
 void BondTradeBookingService::AddListener(ServiceListener<Trade<Bond>>* listener) {
@@ -119,13 +123,13 @@ const vector<ServiceListener<Trade<Bond>>*>& BondTradeBookingService::GetListene
   return listeners_;
 }
 
-void BondTradeBookingService::BookTrade(Trade<Bond>& trade) {
+void BondTradeBookingService::AddTrade(Trade<Bond>& trade) {
   // add data to the stored trades:
   std::string id = trade.GetTradeId();
   trades_[id] = trade;
 
   std::cout << "Communicating trade to Position Listeners" << std::endl;
-  // communicate trade to position service
+  // communicate trade to position service via listener
   for (auto l : listeners_) {
     l->ProcessUpdate(trade);
   }
@@ -140,11 +144,11 @@ BondTradeBookingConnector::BondTradeBookingConnector(BondTradeBookingService* _s
 
 void BondTradeBookingConnector::Subscribe(const char* filename, const bool& header) {
   std::string line;
-  std::vector<std::string> row;
-  Bond bond;
+  std::vector<std::string> row;  // to store output of string splitting
+  Bond bond;  // bond object for the bond that is being traded
   double trade_price;
   long trade_size;
-  Side side;
+  Side side;  // buy or sell
 
   try {
     std::ifstream in(filename);
@@ -157,7 +161,8 @@ void BondTradeBookingConnector::Subscribe(const char* filename, const bool& head
       // some items need preprocessing
       // create a bond object from the id:
       bond = MakeBond(row[0]);
-      std::cout << "Bond: " << bond << std::endl;
+      std::cout << PrintTimeStamp();
+      std::cout << " Bond: " << bond << std::endl;
       // compute price
       trade_price = StringToPrice(row[2]);
       // trade size:
@@ -200,10 +205,11 @@ void BondTradeBookingListener::ProcessAdd(ExecutionOrder<Bond>& data) {
   //trade data:
   std::string trade_id = bond.GetTicker() + "57747FFC" + std::to_string(counter_);
   double price = data.GetPrice();
-  std::string book = books_[counter_];
-  counter_++; counter_ %= 3;
   long qnt = data.GetHiddenQuantity() + data.GetVisibleQuantity();
   Side side = (data.GetSide() == OFFER) ? BUY : SELL;
+  // rotate thru the three books:
+  std::string book = books_[counter_];
+  counter_++; counter_ %= 3;
 
   Trade<Bond> trade_obj(bond, trade_id, price, book, qnt, side);
   bondTradeBookingService_->BookTrade(trade_obj);

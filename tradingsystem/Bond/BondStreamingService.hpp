@@ -16,11 +16,11 @@
 
 /**
  * Bond Streaming Service
- * uses a Connector to publish streams via socket into a separate process
- * which listens to the streams on the socket via its own Connector
- * and prints them when it receives them.
- * Keyed on product identifier.
- * Type T is the product type.
+ * Streaming Service class specialized for bonds;
+ * stores a vector of listeners and a map of strings -> price streams
+ * 
+ * Gets data via a listener on BondAlgoStreamingService and communicates it
+ * to Historical Data Listeners to print the stream
  */
 class BondStreamingService : public StreamingService<Bond> {
 private:
@@ -51,8 +51,7 @@ public:
 
 /**
 * Streaming listener specialized for bonds
-* Aggresses the top of the book, alternating between bid and offer
-* and only aggressing when the spread is at its tightest
+* gets price stream from algo and sends it to get published
 */
 class BondStreamingListener : public ServiceListener<AlgoStream<Bond>> {
 private:
@@ -98,7 +97,7 @@ const vector<ServiceListener<PriceStream<Bond>>*>& BondStreamingService::GetList
 }
 
 void BondStreamingService::PublishPrice(PriceStream<Bond>& priceStream) {
-  // add order to map
+  // add price stream to map
   std::string id = priceStream.GetProduct().GetProductId();
   streams_[id] = priceStream;
 

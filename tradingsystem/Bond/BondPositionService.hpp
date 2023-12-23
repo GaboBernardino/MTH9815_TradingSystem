@@ -12,6 +12,14 @@
 #include "../positionservice.hpp"
 #include "BondRiskService.hpp"
 
+
+/**
+* Position service specialized for Bonds;
+* stores a vector of listeners and a map of strings -> position info
+* 
+* Gets data from listener on TradeBookingService and communicates it
+* to Risk Listeners and Historical Data Listeners
+*/
 class BondPositionService : public PositionService<Bond> {
 private:
   std::vector<ServiceListener<Position<Bond>>*> listeners_;
@@ -40,7 +48,7 @@ public:
 
 /**
 * Postion listener specialized for bonds
-* Sends trades from Booking service to Position service
+* Sends trades from Position service to Risk service
 */
 class BondPositionListener : public ServiceListener<Trade<Bond>> {
 private:
@@ -89,7 +97,7 @@ const vector<ServiceListener<Position<Bond>>*>& BondPositionService::GetListener
 
 void BondPositionService::AddTrade(Trade<Bond>& trade) {
 
-  // create (current) position object to communicate to listeners
+  // get (current) position object to modify and communicate to listeners
   std::string id = trade.GetProduct().GetProductId();
   Position<Bond>& position_obj = positions_[id];
   // get trade size and direction
@@ -106,7 +114,7 @@ void BondPositionService::AddTrade(Trade<Bond>& trade) {
 
   std::cout << "Communicating new position to Risk Lsteners" << std::endl;
   for (auto l : listeners_) {
-    l->ProcessUpdate(position_obj);
+    l->ProcessUpdate(position_obj);  // send position to risk listeners
     l->ProcessAdd(position_obj);  // this is for the historical data listener
   }
 }

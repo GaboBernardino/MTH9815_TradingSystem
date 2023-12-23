@@ -12,7 +12,9 @@
 #include "../executionservice.hpp"
 #include "../marketdataservice.hpp"
 
-
+/**
+* AlgoExecution should have a reference to an ExecutionOrderobject
+*/
 template <typename T>
 class AlgoExecution {
 
@@ -39,10 +41,11 @@ const ExecutionOrder<T>& AlgoExecution<T>::GetOrder() const {
 }
 
 /**
- * Algo Execution Service which registers a ServiceListener
- * on the BondMarketDataService and aggresses the top of the book
- * Keyed on product identifier.
- * Type T is the product type.
+ * Algo Execution Service class specialized for bonds;
+ * stores a vector of listeners and a map of strings -> algo execution objects
+ * 
+ * Gets data via a listener on the BondMarketDataService and communicates
+ * orders to Execution listeners
  */
 template <typename T>
 class AlgoExecutionService : public Service<std::string, AlgoExecution<T>> {

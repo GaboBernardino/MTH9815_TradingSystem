@@ -124,6 +124,7 @@ void BondHistoricalPositionConnector::Publish(Position<Bond>& data) {
   std::string pos1 = std::to_string(pos1_long), pos2 = std::to_string(pos2_long), pos3 = std::to_string(pos3_long);
   std::string aggregate = std::to_string(aggregate_long);
 
+  // open file in append mode
   try {
     std::ofstream file;
     file.open("Data/positions.txt", ios::app);
@@ -154,6 +155,7 @@ void BondHistoricalRiskConnector::Publish(PV01<Bond>& data) {
   std::string pv01 = std::to_string(data.GetPV01());
   std::string qnt = std::to_string(data.GetQuantity());
 
+  // open file in append mode
   try {
     std::ofstream file;
     file.open("Data/risk.txt", ios::app);
@@ -171,7 +173,7 @@ void BondHistoricalRiskConnector::Publish(PV01<Bond>& data) {
   std::string sector = _findBucket(data.GetProduct());
   bondRiskService_->UpdateBucketedRisk(sector);
   PV01<BucketedSector<Bond>> pv01bucket = bondRiskService_->GetBucketedRisk(sector);
-  Publish(pv01bucket);
+  this->Publish(pv01bucket);
 }
 
 void BondHistoricalRiskConnector::Publish(PV01<BucketedSector<Bond>>& data) {
@@ -181,6 +183,7 @@ void BondHistoricalRiskConnector::Publish(PV01<BucketedSector<Bond>>& data) {
   std::string pv01 = std::to_string(data.GetPV01());
   std::string qnt = std::to_string(data.GetQuantity());
 
+  // open file in append mode
   try {
     std::ofstream file;
     file.open("Data/risk.txt", ios::app);
@@ -236,6 +239,7 @@ void BondHistoricalExecutionConnector::Publish(ExecutionOrder<Bond>& data) {
   else if (type == LIMIT) order_type = "LIMIT";
   else if (type == STOP) order_type = "STOP";
 
+  // open file in append mode
   try {
     std::ofstream file;
     file.open("Data/executions.txt", ios::app);
@@ -270,6 +274,7 @@ void BondHistoricalStreamingConnector::Publish(PriceStream<Bond>& data) {
   std::string bid_visible = std::to_string(bid_visible_long), bid_hidden = std::to_string(bid_hidden_long);
   std::string offer_visible = std::to_string(offer_visible_long), offer_hidden = std::to_string(offer_hidden_long);
 
+  // open file in append mode
   try {
     std::ofstream file;
     file.open("Data/streaming.txt", ios::app);
@@ -311,6 +316,7 @@ void BondHistoricalInquiryConnector::Publish(Inquiry<Bond>& data) {
   else if (inquiry_state == REJECTED) state = "REJECTED";
   else if (inquiry_state == CUSTOMER_REJECTED) state = "CUSTOMER_REJECTED";
 
+  // open file in append mode
   try {
     std::ofstream file;
     file.open("Data/allinquiries.txt", ios::app);

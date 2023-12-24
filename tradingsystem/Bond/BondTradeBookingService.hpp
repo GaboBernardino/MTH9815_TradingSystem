@@ -212,7 +212,7 @@ void BondTradeBookingListener::ProcessAdd(ExecutionOrder<Bond>& data) {
   counter_++; counter_ %= 3;
 
   Trade<Bond> trade_obj(bond, trade_id, price, book, qnt, side);
-  bondTradeBookingService_->BookTrade(trade_obj);
+  bondTradeBookingService_->AddTrade(trade_obj);
 }
 
 void BondTradeBookingListener::ProcessRemove(ExecutionOrder<Bond>& data) {

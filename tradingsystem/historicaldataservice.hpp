@@ -54,6 +54,9 @@ public:
 /**
 * Historical data listener
 * to be specialized and added to a service to receive data
+* 
+* Will send the received data to a HistoricalDataService
+* which will publish it via a connector
 */
 template <typename T>
 class HistoricalDataListener : public ServiceListener<T> {

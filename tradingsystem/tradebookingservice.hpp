@@ -120,7 +120,7 @@ Side Trade<T>::GetSide() const
 }
 
 template<typename T>
-void TradeBookingService<T>::BookTrade(Trade<T> &trade)
+void TradeBookingService<T>::AddTrade(Trade<T> &trade)
 {
 }
 

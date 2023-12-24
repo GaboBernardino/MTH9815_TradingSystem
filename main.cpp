@@ -19,6 +19,8 @@ int main() {
 
   std::cout << std::fixed << std::setprecision(8);
 
+  auto start = std::chrono::system_clock::now();
+
   std::cout << PrintTimeStamp() << " Program starting" << std::endl;
 
   std::cout << PrintTimeStamp() << " Creating services" << std::endl;
@@ -27,21 +29,21 @@ int main() {
   BondAlgoStreamingService algo_stream_service;  // service receiving Price objects from `price_service`
   BondStreamingService stream_service;  // service receiving PriceStreams from `algo_stream_service`
   BondGUIService gui_service(300);  // service publishing Price information from `price_Service`
-  HistoricalDataService<PriceStream<Bond>> stream_historical_service;
+  HistoricalDataService<PriceStream<Bond>> stream_historical_service;  // service receiving data to persist in `streaming.txt`
 
   BondTradeBookingService trade_service;  // service receiving Trade objects from `trades.txt`
   BondPositionService pos_service;  // service receiving Position objects from `trade_service`
   BondRiskService risk_service;  // service receiving PV01 objects from `pos_service`
-  BondExecutionService execution_service;
-  HistoricalDataService<ExecutionOrder<Bond>> execution_history_service;
-  HistoricalDataService<PV01<Bond>> risk_history_service;
-  HistoricalDataService<Position<Bond>> position_history_service;
+  BondExecutionService execution_service;  // service receiving ExecutionOrder objects from `algo_service`
+  HistoricalDataService<ExecutionOrder<Bond>> execution_history_service;  // service receiving data to persist in `execution.txt`
+  HistoricalDataService<PV01<Bond>> risk_history_service;  // service receiving data to persist in `risk.txt`
+  HistoricalDataService<Position<Bond>> position_history_service;  // service receiving data to persist in `position.txt`
 
   BondMarketDataService mkt_service;  // service receiving OrderBook objects from `marketdata.txt`
   BondAlgoExecutionService algo_service; // service receiving OrderBooks from `mkt_service`
 
-  BondInquiryService inquiry_service;
-  HistoricalDataService<Inquiry<Bond>> inquiry_historical_service;
+  BondInquiryService inquiry_service;  // service receiving Inquiry objects from `inquiries.txt`
+  HistoricalDataService<Inquiry<Bond>> inquiry_historical_service;    // service receiving data to persist in `allinquiries.txt`
 
   std::cout << PrintTimeStamp() << " Services created" << std::endl;
 
@@ -62,7 +64,7 @@ int main() {
   pos_service.AddListener(&risk_listener);
   BondPositionListener pos_listener(&pos_service);  // listens to Trade<Bond>
   trade_service.AddListener(&pos_listener);
-  BondTradeBookingListener trade_listener(&trade_service);
+  BondTradeBookingListener trade_listener(&trade_service);  // listens to ExecutionOrder<Bond>
   execution_service.AddListener(&trade_listener);
   BondExecutionListener execution_listener(&execution_service);  // listens to AlgoExecution<Bond>
   algo_service.AddListener(&execution_listener);
@@ -76,7 +78,7 @@ int main() {
   HistoricalDataListener<Position<Bond>> position_hist_listener(&position_history_service);
   pos_service.AddListener(&position_hist_listener);
 
-  BondInquiryListener inquiry_listener(&inquiry_service);
+  BondInquiryListener inquiry_listener(&inquiry_service);  // listens to Inqury<Bond>
   inquiry_service.AddListener(&inquiry_listener);
   HistoricalDataListener<Inquiry<Bond>> inquiry_hist_listener(&inquiry_historical_service);
   inquiry_service.AddListener(&inquiry_hist_listener);
@@ -132,6 +134,10 @@ int main() {
   inquiry_service.SetConnector(&inquiry_connector);
   inquiry_connector.Subscribe("Data/inquiries.txt", false);
   std::cout << PrintTimeStamp() << " Created connector for market data" << std::endl;
+
+  auto end = std::chrono::system_clock::now();
+  chrono::duration<double> elapsed_time = end - start;
+  std::cout << "\n\nTotal elapsed time: " << elapsed_time.count() << "s\n";
 
   return 0;
 }

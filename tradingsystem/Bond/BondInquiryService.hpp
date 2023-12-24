@@ -15,9 +15,14 @@
 #include "../products.hpp"
 
 /**
- * Bond Inquiry Service
- * send a quote of 100 back to a Connector via the Publish() method
- * Keyed on INQUIRY identifier.
+ * Bond inquiry service specialized for bonds;
+ * stores a vector of listeners and a map of strings -> inquiry
+ * also syores a pointer to a connector which  it uses to publish
+ * quotes for received inquiries
+ * 
+ * Gets data from `inquiries.txt` via a connector and sends it back
+ * to the connector to publish
+ * Also communicates the data to InquiryListeners and HistoricalData listeners
  */
 class BondInquiryService : public InquiryService<Bond> {
 private:
@@ -53,6 +58,8 @@ public:
 
 /**
 * Inquiry connector class specialized for bonds;
+* Reads from `inquiries.txt` and sends the Inquiry object to the service
+* Publishes received inquiries after quoting them
 */
 class BondInquiryConnector : public Connector<Inquiry<Bond>> {
 private:
@@ -64,13 +71,14 @@ public:
   // Subscribe to a Service
   virtual void Subscribe(const char* filename, const bool& header = true) override;
 
-  // Publish data - this one is subscribe only tho
+  // Publish data
   virtual void Publish(Inquiry<Bond>& data) override;
 };
 
 
 /**
 * Inquiry listener specialized for bonds
+* Sends back a quote of 100 when the inquiry is in `RECEIVED` state
 */
 class BondInquiryListener : public ServiceListener<Inquiry<Bond>> {
 private:
@@ -113,7 +121,7 @@ void BondInquiryService::OnMessage(Inquiry<Bond>& data) {
 
   for (auto l : listeners_) {
     l->ProcessAdd(data);  // this is for the historical data listener
-    l->ProcessUpdate(data);  // the listener sends back a quote if it is received
+    l->ProcessUpdate(data);  // the listener will send back a quote if it is received
   }
 }
 
@@ -153,13 +161,13 @@ BondInquiryConnector::BondInquiryConnector(BondInquiryService* _service) :
 
 void BondInquiryConnector::Subscribe(const char* filename, const bool& header) {
   std::string line;
-  std::vector<std::string> row;
+  std::vector<std::string> row;  // to store output of string splitting
   std::string inquiry_id;
-  Bond bond;
-  Side side;
+  Bond bond;  // bond object for the bond being inquired
+  Side side; // buy or sell
   long qnt;
   double price;
-  InquiryState state;
+  InquiryState state;  // received -> quoted -> done
 
   try {
     std::ifstream in(filename);
@@ -171,7 +179,7 @@ void BondInquiryConnector::Subscribe(const char* filename, const bool& header) {
       // get id, bond id, side, quntity, price and status
       boost::algorithm::split(row, line, boost::algorithm::is_any_of(","));
 
-      // create objects
+      // get inquiry information
       inquiry_id = row[0];  // THIS IS WHAT THE SERVICE IS KEYED ON!
       bond = MakeBond(row[1]);
       side = (row[2] == "SELL") ? SELL : BUY;
@@ -188,7 +196,7 @@ void BondInquiryConnector::Subscribe(const char* filename, const bool& header) {
       else if (row[5] == "CUSTOMER_REJECTED")
         state = CUSTOMER_REJECTED;
 
-      // reate inquiry object and send it to service
+      // create inquiry object and send it to service
       std::cout << std::endl << PrintTimeStamp() << std::endl;
       Inquiry<Bond> inquiry_obj(inquiry_id, bond, side, qnt, price, state);
       bondInquiryService_->OnMessage(inquiry_obj);
@@ -205,9 +213,10 @@ void BondInquiryConnector::Publish(Inquiry<Bond>& data) {
     data.SetState(QUOTED);
     std::cout << "Connector sending back quoted inquiry " << data.GetInquiryId() << std::endl;
     bondInquiryService_->OnMessage(data);  // new price was already set by the service
+    // immediately send update with DONE state
     data.SetState(DONE);
     std::cout << "Connector updating inquiry " << data.GetInquiryId() << " to done." << std::endl;
-    bondInquiryService_->OnMessage(data);  // immediately send update
+    bondInquiryService_->OnMessage(data);
   }
   else {
     std::cout << "Inquiry was rejected" << std::endl;
